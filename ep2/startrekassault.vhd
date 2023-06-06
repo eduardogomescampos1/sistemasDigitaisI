@@ -99,7 +99,12 @@ architecture game of StarTrekAssault is
     end component;
     signal enAdd : bit;
     type state_type is (SAFE, WARNING, DANGER);
+    signal turnBuffer : bit_vector(4 downto 0);
+    signal healthBuffer, shieldBuffer : bit_vector(7 downto 0);
     begin
-      WL(1) <= '1' when health = "00000000" else '0';
-      WL(0) <= '1' when turn(4) = '1';
+      WL(1) <= '1' when healthBuffer = "00000000" else '0';
+      WL(0) <= '1' when turnBuffer(4) = '1' else '0';
+      health <= healthBuffer;
+      turn <= turnBuffer;
+      shield <=shieldBuffer;
     end game;
