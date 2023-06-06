@@ -89,17 +89,17 @@ entity StartTrekAssault is
 architecture game of StarTrekAssault is
   -- Vamos dividir a arquitetura em estados: 1o - damage < 32,sem efeito, vida e shield max. 2o 32 < damage and shield > 128, +16, retorna c reset.
   -- 3o shield < 128, so incrementa 2, retorna c reset. W = 1 if health == 0, L = 1 if turn >= 16
-  component decrementerSaturated8 is
-    port (
-    clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
-	  enableAdd: 	  in bit;						-- Se 1, conteúdo do registrador é somado a parallel_add (síncrono)
-    parallel_add: in  bit_vector(8 downto 0);   -- Entrada a ser somada (inteiro COM sinal): -256 a +255
-    parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
-  );
-  end component;
-  signal enAdd : bit;
-  signal stateDefiner : bit_vector(1 downto 0);
-  begin 
-    WL(1) <= '1' when health = "00000000" else '0';
-    WL(0) <= '1' when turn(4) = '1';
+    component decrementerSaturated8 is
+      port (
+      clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
+	    enableAdd: 	  in bit;						-- Se 1, conteúdo do registrador é somado a parallel_add (síncrono)
+      parallel_add: in  bit_vector(8 downto 0);   -- Entrada a ser somada (inteiro COM sinal): -256 a +255
+      parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
+      );
+    end component;
+    signal enAdd : bit;
+    type state_type is (SAFE, WARNING, DANGER);
+    begin
+      WL(1) <= '1' when health = "00000000" else '0';
+      WL(0) <= '1' when turn(4) = '1';
     end game;
