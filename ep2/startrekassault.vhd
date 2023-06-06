@@ -98,7 +98,7 @@ architecture game of StarTrekAssault is
       );
     end component;
     signal enAdd : bit;
-    type state_type is (SAFE, WARNING, DANGER);
+    type state_type is (SAFE, WARNINGS, DANGER);
     signal turnBuffer : bit_vector(4 downto 0);
     signal healthBuffer, shieldBuffer : bit_vector(7 downto 0);
     begin
