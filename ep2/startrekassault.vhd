@@ -87,8 +87,8 @@ entity StartTrekAssault is
     end entity;
 
 architecture game of StarTrekAssault is
-  -- Vamos dividir a arquitetura em estados: 1o - damage < 32,sem efeito, vida e shield max. 2o 32 < damage and shield > 128, incrementa 16 (nao retorna).
-  -- 3o shield < 128, so incrementa 2(nao retorna), W = 1 if health == 0, L = 1 if turn >= 16
+  -- Vamos dividir a arquitetura em estados: 1o - damage < 32,sem efeito, vida e shield max. 2o 32 < damage and shield > 128, +16, retorna c reset.
+  -- 3o shield < 128, so incrementa 2, retorna c reset. W = 1 if health == 0, L = 1 if turn >= 16
   component decrementerSaturated8 is
     port (
     clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
