@@ -89,7 +89,7 @@ entity StartTrekAssault is
 architecture game of StarTrekAssault is
   -- Vamos dividir a arquitetura em estados: 1o - damage < 32,sem efeito, vida e shield max. 2o 32 < damage and shield > 128, +16, retorna c reset.
   -- 3o shield < 128, so incrementa 2, retorna c reset. W = 1 if health == 0, L = 1 if turn >= 16
-    component decrementerSaturated8 is
+    component adderSaturated8 is
       port (
       clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
 	    enableAdd: 	  in bit;						-- Se 1, conteúdo do registrador é somado a parallel_add (síncrono)
@@ -97,11 +97,33 @@ architecture game of StarTrekAssault is
       parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
       );
     end component;
+    component decrementerSaturated8 is
+      port (
+        clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
+      enableSub: 	  in bit;						-- Se 1, conteúdo do registrador é subtraído de parallel_sub (síncrono)
+        parallel_sub: in  bit_vector(7 downto 0);   -- Entrada a ser substraida (inteiro SEM sinal): 0 a 255
+        parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
+      );
+    end component ;
     signal enAdd : bit;
-    type state_type is (SAFE, WARNINGS, DANGER);
+    type state_type is (SAFE, DANGER, COLLAPSE);
+    signal present_state, next_state: state_type;
     signal turnBuffer : bit_vector(4 downto 0);
-    signal healthBuffer, shieldBuffer : bit_vector(7 downto 0);
+    signal healthBuffer, shieldBuffer, damageBuffer : bit_vector(7 downto 0);
+    signal shieldAdder : bit_vector(8 downto 0);
     begin
+      next_state <= SAFE when (present_state = SAFE and signed(damage) < signed("00100000")) else
+                    DANGER when (present_state = SAFE and signed(damage) > signed("00100000")) else
+                    DANGER when (present_state = DANGER and (signed(shieldBuffer) - signed(damage)) > signed("10000000")) else
+                    COLLAPSE when (present_state = DANGER and (signed(shieldBuffer) - signed(damage)) < signed("10000000")) else
+                    COLLAPSE when (present_state = COLLAPSE) else
+                    SAFE;
+      with state_type select
+        shieldAdder <= "000000010" when next_state = COLLAPSE;
+                       "000010000" when next_state = DANGER;
+                       "000000000" when others;
+      damageBuffer <= damage when ((state_type = DANGER or state_type = COLLAPSE) or (state_types = SAFE and signed(damage) > signed("00100000"))) else "0000000";
+      ClockOrResetReaction:process(reset,clock)
       WL(1) <= '1' when healthBuffer = "00000000" else '0';
       WL(0) <= '1' when turnBuffer(4) = '1' else '0';
       health <= healthBuffer;
