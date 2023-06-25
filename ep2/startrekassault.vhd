@@ -5,7 +5,7 @@ use ieee.numeric_bit.all;
 entity adderSaturated8 is
   port (
     clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
-	enableAdd: 	  in bit;						-- Se 1, conteúdo do registrador é somado a parallel_add (síncrono)
+	  enableAdd: 	  in bit;						-- Se 1, conteúdo do registrador é somado a parallel_add (síncrono)
     parallel_add: in  bit_vector(8 downto 0);   -- Entrada a ser somada (inteiro COM sinal): -256 a +255
     parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
   );
@@ -73,9 +73,75 @@ begin
   preOut <= bit_vector(internal);
   parallel_out <= "00000000" when preOut(8) = '1' else --valores negativos: saturar em 0
   				  preout(7 downto 0);
-end architecture;
+end architecture; 
 
-entity StartTrekAssault is
+entity StarTrekAssaultUC is
+  port (
+  clock, reset, dead, gameOver, shieldCompromised, slightDamage: in bit;
+  enSh, enLi, enCo, clearCo, clearLi, clearSh, selRec: out bit;
+  WL : out bit_vector(1 downto 0)
+  );
+  end entity;
+architecture UC of StarTrekAssaultUC is
+  -- Vamos dividir a arquitetura em estados: 1o - damage < 32,sem efeito, vida e shield max. 2o 32 < damage and shield > 128, +16, retorna c reset.
+  -- 3o shield < 128, so incrementa 2, retorna c reset. W = 1 if health == 0, L = 1 if turn >= 16
+    type state_type is (IDLE ,SAFE, DANGER, COLLAPSE, GAMEOVER);
+    signal present_state, next_state: state_type;
+    signal clearSh, clearLi, clearCo, enSh, enLi, enCo, selRec, set: bit;
+    begin
+      next_state <= SAFE when (present_state = SAFE and slightDamage = '0') else
+                    DANGER when (present_state = SAFE and slightDamage = '1' and shieldCompromised = '0') else
+                    DANGER when (present_state = DANGER and shieldCompromised = '0') else
+                    COLLAPSE when (present_state = DANGER or present_state = SAFE and shieldCompromised = '1') else
+                    COLLAPSE when (present_state = COLLAPSE and gameOver = '0') else
+                    GAMEOVER when (gameOver = '1') else
+                    SAFE;
+      
+      set <= '1' when present_state = SAFE else '0';
+      ClockOrResetReaction:process(clock, reset) {    
+        begin
+        if (reset = 1) then
+          present_state = IDLE;
+        elsif rising_edge(clock) then 
+          present_state <= next_state;
+        end if;
+        end process ClockOrResetReaction;
+      WL(1) <= '1' when dead = '1' else '0';
+      WL(0) <= '1' when  gameOver= '1' else '0';
+      clearSh <= '1' when present_state = IDLE else '0';
+      clearCo <= '1' when present_state = IDLE else '0';
+      clearLi <= '1' when present_state = IDLE else '0';
+      enSh <= '0' when (present_state = IDLE or present_state = GAMEOVER) else '1';
+      enCo <= '0' when (present_state = IDLE or present_state = GAMEOVER) else '1';
+      enLi <= '0' when (present_state = IDLE or present_state = GAMEOVER) else '1';
+      selRec <= '1' when (present_state = DANGER) else '0';
+    end UC;
+
+  entity StarTrekAssaultFD is 
+  port (
+    enSh, enLi, enCo, clearCo, clearSh, clearLi, selRec, clock, reset: in bit;
+    slightDamage, shieldCompromised, dead, gameOver : out bit;
+    damage: in bit_vector(7 downto 0); -- Entrada de dados: dano
+    shield: out bit_vector(7 downto 0); -- Saída: shield atual
+    health: out bit_vector(7 downto 0); -- Saída: health atual
+    turn: out bit_vector(4 downto 0); -- Saída: rodada atual
+  );
+  end entity;
+  architecture FD of StarTrekAssaultFD is
+    signal shieldBuffer, healthBuffer, shieldChange, lifeChange, recovery : bit_vector(7 downto 0);
+    begin
+      with selRec select
+        recovery <= "00010000" when '1',
+                    "00000010" when '0',
+                    "00000000" when others;
+      slightDamage <= '1' when (signed(damage) > 32) else '0';
+      shieldCompromised <= '1' when (unsigned(shieldBuffer) <= 128) else '0';
+      shieldAffect <= bit_vector(damage -when (unsigned(damage) < unsigned(shieldBuffer)) else bit_vector(unsigned(damage) - unsigned(shieldBuffer));
+      -- Falta arrumar o shield affect
+      lifeDamage <= bit_vector(unsigned(damage) - (unsigned(shieldBuffer) + unsigned(recovery))) when  
+  end FD;
+  
+  entity StartTrekAssault is
     port (
     clock, reset: in bit; -- sinais de controle globais
     damage: in bit_vector(7 downto 0); -- Entrada de dados: dano
@@ -85,48 +151,3 @@ entity StartTrekAssault is
     WL: out bit_vector(1 downto 0) -- Saída: vitória e/ou derrota
     );
     end entity;
-
-architecture game of StarTrekAssault is
-  -- Vamos dividir a arquitetura em estados: 1o - damage < 32,sem efeito, vida e shield max. 2o 32 < damage and shield > 128, +16, retorna c reset.
-  -- 3o shield < 128, so incrementa 2, retorna c reset. W = 1 if health == 0, L = 1 if turn >= 16
-    component adderSaturated8 is
-      port (
-      clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
-	    enableAdd: 	  in bit;						-- Se 1, conteúdo do registrador é somado a parallel_add (síncrono)
-      parallel_add: in  bit_vector(8 downto 0);   -- Entrada a ser somada (inteiro COM sinal): -256 a +255
-      parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
-      );
-    end component;
-    component decrementerSaturated8 is
-      port (
-        clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
-      enableSub: 	  in bit;						-- Se 1, conteúdo do registrador é subtraído de parallel_sub (síncrono)
-        parallel_sub: in  bit_vector(7 downto 0);   -- Entrada a ser substraida (inteiro SEM sinal): 0 a 255
-        parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
-      );
-    end component ;
-    signal enAdd : bit;
-    type state_type is (SAFE, DANGER, COLLAPSE);
-    signal present_state, next_state: state_type;
-    signal turnBuffer : bit_vector(4 downto 0);
-    signal healthBuffer, shieldBuffer, damageBuffer : bit_vector(7 downto 0);
-    signal shieldAdder : bit_vector(8 downto 0);
-    begin
-      next_state <= SAFE when (present_state = SAFE and signed(damage) < signed("00100000")) else
-                    DANGER when (present_state = SAFE and signed(damage) > signed("00100000")) else
-                    DANGER when (present_state = DANGER and (signed(shieldBuffer) - signed(damage)) > signed("10000000")) else
-                    COLLAPSE when (present_state = DANGER and (signed(shieldBuffer) - signed(damage)) < signed("10000000")) else
-                    COLLAPSE when (present_state = COLLAPSE) else
-                    SAFE;
-      with state_type select
-        shieldAdder <= "000000010" when next_state = COLLAPSE;
-                       "000010000" when next_state = DANGER;
-                       "000000000" when others;
-      damageBuffer <= damage when ((state_type = DANGER or state_type = COLLAPSE) or (state_types = SAFE and signed(damage) > signed("00100000"))) else "0000000";
-      ClockOrResetReaction:process(reset,clock)
-      WL(1) <= '1' when healthBuffer = "00000000" else '0';
-      WL(0) <= '1' when turnBuffer(4) = '1' else '0';
-      health <= healthBuffer;
-      turn <= turnBuffer;
-      shield <=shieldBuffer;
-    end game;
