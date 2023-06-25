@@ -124,7 +124,7 @@ architecture UC of StarTrekAssaultUC is
     damage: in bit_vector(7 downto 0); -- Entrada de dados: dano
     shield: out bit_vector(7 downto 0); -- Saída: shield atual
     health: out bit_vector(7 downto 0); -- Saída: health atual
-    turn: out bit_vector(4 downto 0); -- Saída: rodada atual
+    turn: out bit_vector(4 downto 0) -- Saída: rodada atual
   );
   end entity;
   architecture FD of StarTrekAssaultFD is
@@ -139,7 +139,7 @@ architecture UC of StarTrekAssaultUC is
     component decrementerSaturated8 is
       port (
         clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
-      enableSub: 	  in bit;						-- Se 1, conteúdo do registrador é subtraído de parallel_sub (síncrono)
+        enableSub: 	  in bit;						-- Se 1, conteúdo do registrador é subtraído de parallel_sub (síncrono)
         parallel_sub: in  bit_vector(7 downto 0);   -- Entrada a ser substraida (inteiro SEM sinal): 0 a 255
         parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
       );
