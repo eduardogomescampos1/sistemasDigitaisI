@@ -78,7 +78,7 @@ end architecture;
 entity StarTrekAssaultUC is
   port (
   clock, reset, dead, gameOver, shieldCompromised, slightDamage: in bit;
-  enSh, enLi, enCo, clearCo, clearLi, clearSh, selRec, set: out bit;
+  enSh, enLi, enCo, clearCo, clearLi, clearSh, selRec, ignoreDamage, set: out bit;
   WL : out bit_vector(1 downto 0)
   );
   end entity;
@@ -107,6 +107,7 @@ architecture UC of StarTrekAssaultUC is
         end process ClockOrResetReaction;
       WL(1) <= '1' when dead = '1' else '0';
       WL(0) <= '1' when  gameOver= '1' else '0';
+      ignoreDamage <= '1' when present_state = SAFE else '0';
       clearSh <= '1' when present_state = IDLE else '0';
       clearCo <= '1' when present_state = IDLE else '0';
       clearLi <= '1' when present_state = IDLE else '0';
@@ -118,7 +119,7 @@ architecture UC of StarTrekAssaultUC is
 
   entity StarTrekAssaultFD is 
   port (
-    enSh, enLi, enCo, clearCo, clearSh, clearLi, selRec, clock, reset: in bit;
+    enSh, enLi, enCo, clearCo, clearSh, clearLi, selRec, clock, reset, ignoreDamage: in bit;
     slightDamage, shieldCompromised, dead, gameOver : out bit;
     damage: in bit_vector(7 downto 0); -- Entrada de dados: dano
     shield: out bit_vector(7 downto 0); -- Saída: shield atual
@@ -153,7 +154,7 @@ architecture UC of StarTrekAssaultUC is
                     "00000000" when others;
       slightDamage <= '1' when (signed(damage) > 32) else '0';
       shieldCompromised <= '1' when (unsigned(shieldBuffer) <= 128) else '0';
-      shieldChange <= bit_vector(damage -when (unsigned(damage) < unsigned(shieldBuffer))) else bit_vector(unsigned(damage) - unsigned(shieldBuffer));
+      shieldChange <= bit_vector(damage when (unsigned(damage) < unsigned(shieldBuffer))) else bit_vector(unsigned(damage) - unsigned(shieldBuffer));
       -- Falta arrumar o shield change
       healthChange <= bit_vector(unsigned(damage) - (unsigned(shieldBuffer) + unsigned(recovery))); -- complementar
       shieldManipulation : adderSaturated8 port map(clock, set, clearSh, enSh, shieldChange, shieldBuffer);
