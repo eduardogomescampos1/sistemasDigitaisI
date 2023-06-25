@@ -78,7 +78,7 @@ end architecture;
 entity StarTrekAssaultUC is
   port (
   clock, reset, dead, gameOver, shieldCompromised, slightDamage: in bit;
-  enSh, enLi, enCo, clearCo, clearLi, clearSh, selRec: out bit;
+  enSh, enLi, enCo, clearCo, clearLi, clearSh, selRec, set: out bit;
   WL : out bit_vector(1 downto 0)
   );
   end entity;
@@ -87,7 +87,6 @@ architecture UC of StarTrekAssaultUC is
   -- 3o shield < 128, so incrementa 2, retorna c reset. W = 1 if health == 0, L = 1 if turn >= 16
     type state_type is (IDLE ,SAFE, DANGER, COLLAPSE, GAMEOVER);
     signal present_state, next_state: state_type;
-    signal clearSh, clearLi, clearCo, enSh, enLi, enCo, selRec, set: bit;
     begin
       next_state <= SAFE when (present_state = SAFE and slightDamage = '0') else
                     DANGER when (present_state = SAFE and slightDamage = '1' and shieldCompromised = '0') else
@@ -128,7 +127,25 @@ architecture UC of StarTrekAssaultUC is
   );
   end entity;
   architecture FD of StarTrekAssaultFD is
-    signal shieldBuffer, healthBuffer, shieldChange, lifeChange, recovery : bit_vector(7 downto 0);
+    component adderSaturated8 is
+      port (
+        clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
+        enableAdd: 	  in bit;						-- Se 1, conteúdo do registrador é somado a parallel_add (síncrono)
+        parallel_add: in  bit_vector(8 downto 0);   -- Entrada a ser somada (inteiro COM sinal): -256 a +255
+        parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
+      );
+    end component;
+    component decrementerSaturated8 is
+      port (
+        clock, set, reset: in bit;					-- Controle global: clock, set e reset (síncrono)
+      enableSub: 	  in bit;						-- Se 1, conteúdo do registrador é subtraído de parallel_sub (síncrono)
+        parallel_sub: in  bit_vector(7 downto 0);   -- Entrada a ser substraida (inteiro SEM sinal): 0 a 255
+        parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
+      );
+    end component;
+    signal shieldBuffer, healthBuffer, shieldChange, recovery : bit_vector(7 downto 0);
+    signal healthChange : bit_vector(8 downto 0);
+    signal turnBuffer : bit_vector (4 downto 0);
     begin
       with selRec select
         recovery <= "00010000" when '1',
@@ -136,9 +153,17 @@ architecture UC of StarTrekAssaultUC is
                     "00000000" when others;
       slightDamage <= '1' when (signed(damage) > 32) else '0';
       shieldCompromised <= '1' when (unsigned(shieldBuffer) <= 128) else '0';
-      shieldAffect <= bit_vector(damage -when (unsigned(damage) < unsigned(shieldBuffer)) else bit_vector(unsigned(damage) - unsigned(shieldBuffer));
-      -- Falta arrumar o shield affect
-      lifeDamage <= bit_vector(unsigned(damage) - (unsigned(shieldBuffer) + unsigned(recovery))) when  
+      shieldChange <= bit_vector(damage -when (unsigned(damage) < unsigned(shieldBuffer))) else bit_vector(unsigned(damage) - unsigned(shieldBuffer));
+      -- Falta arrumar o shield change
+      healthChange <= bit_vector(unsigned(damage) - (unsigned(shieldBuffer) + unsigned(recovery))); -- complementar
+      shieldManipulation : adderSaturated8 port map(clock, set, clearSh, enSh, shieldChange, shieldBuffer);
+      healthManipulation : decrementerSaturated8 port map(clock, set, clearLi, enLi, healthChange, healthBuffer);
+      counterManipulation : contador port map (clock, enCo, clearCo, turnBuffer); -- implementar
+      dead <= '1' when healthBuffer = "00000000" else '0';
+      gameOver <= '1' when (dead = '1' or turnBuffer = "10000") else '0';
+      shield <= shieldBuffer;
+      health <= healthBuffer;
+      turn <= turnBuffer;  
   end FD;
   
   entity StartTrekAssault is
@@ -151,3 +176,4 @@ architecture UC of StarTrekAssaultUC is
     WL: out bit_vector(1 downto 0) -- Saída: vitória e/ou derrota
     );
     end entity;
+-- implementar
