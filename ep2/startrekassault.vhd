@@ -186,7 +186,7 @@ architecture UC of StarTrekAssaultUC is
         recovery <= "00010000" when '1',
                     "00000010" when '0',
                     "00000000" when others;
-      slightDamage <= '1' when (signed(damage) > 31) else '0';
+      slightDamage <= '1' when (unsigned(damage) > 31) else '0';
       shieldCompromised <= '1' when (unsigned(shieldBuffer) < 128) else '0';
       shieldChange <=  "000000000" when ignoreDamage = '1' else bit_vector(signed('0' & recovery) - signed('0' & damage));
       healthChange <=  "00000000" when (signed(shieldChange) + signed('0' & shieldBuffer)) > 0 else bit_vector(unsigned(damage) - unsigned(recovery) - unsigned(shieldBuffer)); 
