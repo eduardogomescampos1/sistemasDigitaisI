@@ -138,7 +138,7 @@ begin
 			  bit_vector(to_unsigned(0,shield_out'length)), 
               bit_vector(to_unsigned(0,health_out'length)), 
               bit_vector(to_unsigned(13,turn_out'length)), 
-              "10"),
+              "00"),
         ('0', bit_vector(to_unsigned(40,damage_in'length)),		-- dano de 10 < 32
 			  bit_vector(to_unsigned(0,shield_out'length)), 
               bit_vector(to_unsigned(0,health_out'length)), 
