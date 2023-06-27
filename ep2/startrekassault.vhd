@@ -115,9 +115,9 @@ architecture UC of StarTrekAssaultUC is
       clearSh <= '1' when present_state = IDLE else '0';
       clearCo <= '1' when present_state = IDLE else '0';
       clearLi <= '1' when present_state = IDLE else '0';
-      enSh <= '0' when (present_state = IDLE or present_state = ENDGAMEOVER) else '1';
-      enCo <= '0' when (present_state = IDLE or present_state = ENDGAMEOVER) else '1';
-      enLi <= '0' when (present_state = IDLE or present_state = ENDGAMEOVER) else '1';
+      enSh <= '0' when (present_state = IDLE or gameOver = '1' or dead = '1') else '1';
+      enCo <= '0' when (present_state = IDLE or gameOver = '1' or dead = '1') else '1';
+      enLi <= '0' when (present_state = IDLE or gameOver = '1' or dead = '1') else '1';
       selRec <= '1' when (present_state = DANGER) else '0';
     end UC;
     library ieee;
@@ -137,6 +137,8 @@ architecture UC of StarTrekAssaultUC is
       counting := "00000"; -- valor inicial
     elsif (rising_edge(clock) and enable = '1') then
       counting := counting + 1;
+    elsif (rising_edge(clock) and enable = '0') then 
+      counting := counting + 0;
     end if;
     turn <= bit_vector(counting); -- “cast” de variable
     end process p0;
