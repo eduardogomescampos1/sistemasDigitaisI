@@ -93,7 +93,7 @@ architecture UC of StarTrekAssaultUC is
                     DANGER when (present_state = DANGER and shieldCompromised = '0') else
                     COLLAPSE when (present_state = DANGER or present_state = SAFE and shieldCompromised = '1') else
                     COLLAPSE when (present_state = COLLAPSE and gameOver = '0') else
-                    GAMEOVER when (gameOver = '1') else
+                    GAMEOVER when (gameOver = '1' or dead = '1') else
                     SAFE;
       
       set <= '1' when present_state = SAFE else '0';
@@ -106,7 +106,7 @@ architecture UC of StarTrekAssaultUC is
         end if;
         end process ClockOrResetReaction;
       WL(1) <= '1' when dead = '1' else '0';
-      WL(0) <= '1' when  gameOver= '1' else '0';
+      WL(0) <= '1' when  gameOver = '1' else '0';
       ignoreDamage <= '1' when present_state = SAFE else '0';
       clearSh <= '1' when present_state = IDLE else '0';
       clearCo <= '1' when present_state = IDLE else '0';
@@ -116,6 +116,26 @@ architecture UC of StarTrekAssaultUC is
       enLi <= '0' when (present_state = IDLE or present_state = GAMEOVER) else '1';
       selRec <= '1' when (present_state = DANGER) else '0';
     end UC;
+  
+  entity counter is
+  port (
+    clock, enable, reset : in bit;
+    turn : out bit_vector(4 downto 0)
+  );
+  end entity;
+  architecture counterArch of counter is 
+  begin
+    p0: process (clock) is
+    variable counter : unsigned (4 downto 0); -- variável
+    begin
+    if (reset = '1') then
+      counter := "00000"; -- valor inicial
+    elsif (rising_edge(clock) and enable = 1) then
+      counter := counter + 1;
+    end if;
+    turn <= bit_vector(counter); -- “cast” de variable
+    end process p0;
+  end architecture counterArch;
 
   entity StarTrekAssaultFD is 
   port (
@@ -144,8 +164,8 @@ architecture UC of StarTrekAssaultUC is
         parallel_out: out bit_vector(7 downto 0)	-- Conteúdo do registrador: 8 bits, representando 0 a 255
       );
     end component;
-    signal shieldBuffer, healthBuffer, shieldChange, recovery : bit_vector(7 downto 0);
-    signal healthChange : bit_vector(8 downto 0);
+    signal shieldBuffer, healthBuffer, healthChange, recovery : bit_vector(7 downto 0);
+    signal shieldChange : bit_vector(8 downto 0);
     signal turnBuffer : bit_vector (4 downto 0);
     begin
       with selRec select
@@ -154,14 +174,13 @@ architecture UC of StarTrekAssaultUC is
                     "00000000" when others;
       slightDamage <= '1' when (signed(damage) > 32) else '0';
       shieldCompromised <= '1' when (unsigned(shieldBuffer) <= 128) else '0';
-      shieldChange <= bit_vector(damage when (unsigned(damage) < unsigned(shieldBuffer))) else bit_vector(unsigned(damage) - unsigned(shieldBuffer));
-      -- Falta arrumar o shield change
-      healthChange <= bit_vector(unsigned(damage) - (unsigned(shieldBuffer) + unsigned(recovery))); -- complementar
+      shieldChange <=  -- implementar
+      healthChange <=  -- implementar
       shieldManipulation : adderSaturated8 port map(clock, set, clearSh, enSh, shieldChange, shieldBuffer);
       healthManipulation : decrementerSaturated8 port map(clock, set, clearLi, enLi, healthChange, healthBuffer);
-      counterManipulation : contador port map (clock, enCo, clearCo, turnBuffer); -- implementar
+      counterManipulation : contador port map (clock, enCo, clearCo, turnBuffer); 
       dead <= '1' when healthBuffer = "00000000" else '0';
-      gameOver <= '1' when (dead = '1' or turnBuffer = "10000") else '0';
+      gameOver <= '1' when turnBuffer = "10000" else '0';
       shield <= shieldBuffer;
       health <= healthBuffer;
       turn <= turnBuffer;  
