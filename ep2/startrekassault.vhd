@@ -175,8 +175,8 @@ architecture UC of StarTrekAssaultUC is
                     "00000000" when others;
       slightDamage <= '1' when (signed(damage) > 32) else '0';
       shieldCompromised <= '1' when (unsigned(shieldBuffer) <= 128) else '0';
-      shieldChange <=  -- implementar
-      healthChange <=  -- implementar
+      shieldChange <=  '0' when ignoreDamage = '1' else bit_vector(signed('0' & recovery) - signed('0' & damage));
+      healthChange <=  '0' when (signed(shieldChange) + signed('0' & shieldBuffer)) > 0 else bit_vector(unsigned(damage) - unsigned(recovery) - unsigned(shieldBuffer)); 
       shieldManipulation : adderSaturated8 port map(clock, set, clearSh, enSh, shieldChange, shieldBuffer);
       healthManipulation : decrementerSaturated8 port map(clock, set, clearLi, enLi, healthChange, healthBuffer);
       counterManipulation : contador port map (clock, enCo, clearCo, turnBuffer); 
@@ -187,7 +187,7 @@ architecture UC of StarTrekAssaultUC is
       turn <= turnBuffer;  
   end FD;
   
-  entity StartTrekAssault is
+  entity StarTrekAssault is
     port (
     clock, reset: in bit; -- sinais de controle globais
     damage: in bit_vector(7 downto 0); -- Entrada de dados: dano
@@ -197,4 +197,18 @@ architecture UC of StarTrekAssaultUC is
     WL: out bit_vector(1 downto 0) -- Saída: vitória e/ou derrota
     );
     end entity;
--- implementar
+  architecture StarTrekAssaultArch of StarTrekAssault is 
+  signal clearCo, clearLi, clearSh, enCo, enSh, enLi, gameOver, slightDamage, shieldCompromised, dead, selRec, ignoreDamage, set : bit;
+  signal damageBuff, healthBuff, shieldBuff : bit_vector (7 downto 0);
+  signal turnBuff : bit_vector(4 downto 0);
+  signal WLbuff : bit_vector(1 downto 0);
+  begin 
+      damageBuff <= damage;
+      UnitControl: StarTrekAssaultUC port map (clock, reset, dead, gameOver, shieldCompromised, slightDamage, enSh, enLi, enCo, clearCo, clearLi, clearSh, selRec, ignoreDamage, set, WLbuff);
+      DataFlow: StarTrekAssaultFD port map(enSh, enLi, enCo, clearCo, clearSh, clearLi, selRec, clock, reset, ignoreDamage, slightDamage, shieldCompromised, dead, gameOver, damageBuff, shieldBuff, healthBuff, turnBuff);
+      WL <= WLBuff;
+      shield <= shieldBuff;
+      health <= healthBuff;
+      turn <= turnBuff;
+  end architecture StarTrekAssaultArch;   
+      
