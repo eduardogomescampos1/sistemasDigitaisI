@@ -94,6 +94,7 @@ architecture UC of StarTrekAssaultUC is
                     COLLAPSE when (present_state = DANGER or present_state = SAFE and shieldCompromised = '1') else
                     COLLAPSE when (present_state = COLLAPSE and gameOver = '0') else
                     GAMEOVER when (gameOver = '1' or dead = '1') else
+                    GAMEOVER when (present_state = GAMEOVER) else
                     SAFE;
       
       set <= '1' when present_state = SAFE else '0';
