@@ -108,9 +108,9 @@ architecture UC of StarTrekAssaultUC is
         elsif rising_edge(clock) then 
           present_state <= next_state;
         end if;
+        if (dead = '1') then WL(1) <= '1'; else WL(1) <= '0'; end if;
+        if (gameOver = '1') then WL(0) <= '1'; else WL(0) <= '0'; end if;
         end process ClockOrResetReaction;
-      WL(1) <= '1' when dead = '1' else '0';
-      WL(0) <= '1' when  gameOver = '1' else '0';
       ignoreDamage <= '1' when present_state = SAFE else '0';
       clearSh <= '1' when present_state = IDLE else '0';
       clearCo <= '1' when present_state = IDLE else '0';
