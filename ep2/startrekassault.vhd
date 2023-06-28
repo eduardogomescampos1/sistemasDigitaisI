@@ -101,7 +101,7 @@ architecture UC of StarTrekAssaultUC is
                     SAFE;
       
       set <= '1' when present_state = SAFE  else '0';
-      ClockOrResetReaction:process(clock)   
+      ClockOrResetReaction:process(clock, reset)   
         begin
         if (reset = '1') then
         present_state <= IDLE;
@@ -111,13 +111,13 @@ architecture UC of StarTrekAssaultUC is
         if (dead = '1') then WL(1) <= '1'; else WL(1) <= '0'; end if;
         if (gameOver = '1') then WL(0) <= '1'; else WL(0) <= '0'; end if;
         end process ClockOrResetReaction;
-      ignoreDamage <= '1' when present_state = SAFE else '0';
+      ignoreDamage <= '1' when present_state = SAFE or gameOver = '1' or dead = '1' else '0';
       clearSh <= '1' when present_state = IDLE else '0';
       clearCo <= '1' when present_state = IDLE else '0';
       clearLi <= '1' when present_state = IDLE else '0';
-      enSh <= '0' when (present_state = IDLE or gameOver = '1' or dead = '1') else '1';
+      enSh <= '0' when (present_state = IDLE or dead = '1') else '1';
       enCo <= '0' when (present_state = IDLE or gameOver = '1' or dead = '1') else '1';
-      enLi <= '0' when (present_state = IDLE or gameOver = '1' or dead = '1') else '1';
+      enLi <= '0' when (present_state = IDLE or dead = '1') else '1';
       selRec <= '1' when (present_state = DANGER) else '0';
     end UC;
     library ieee;
@@ -181,6 +181,7 @@ architecture UC of StarTrekAssaultUC is
     signal shieldBuffer, healthBuffer, healthChange, recovery : bit_vector(7 downto 0);
     signal shieldChange : bit_vector(8 downto 0);
     signal turnBuffer : bit_vector (4 downto 0);
+    signal donotChangeLife: bit;
     begin
       with selRec select
         recovery <= "00010000" when '1',
@@ -188,8 +189,9 @@ architecture UC of StarTrekAssaultUC is
                     "00000000" when others;
       slightDamage <= '1' when (unsigned(damage) > 31) else '0';
       shieldCompromised <= '1' when (unsigned(shieldBuffer) < 128) else '0';
-      shieldChange <=  "000000000" when ignoreDamage = '1' else bit_vector(signed('0' & recovery) - signed('0' & damage));
-      healthChange <=  "00000000" when (signed(shieldChange) + signed('0' & shieldBuffer)) > 0 else bit_vector(unsigned(damage) - unsigned(recovery) - unsigned(shieldBuffer)); 
+      shieldChange <=  '0' & recovery when ignoreDamage = '1' else bit_vector(signed('0' & recovery) - signed('0' & damage));
+      donotChangeLife <= '1' when (signed(shieldChange) + signed('0' & shieldBuffer) >= 0 or signed(shieldChange) > 0) else '0';
+      healthChange <=  "00000000" when donotChangeLife = '1' else bit_vector(unsigned(damage) - unsigned(recovery) - unsigned(shieldBuffer)); 
       shieldManipulation : adderSaturated8 port map(clock, set, clearSh, enSh, shieldChange, shieldBuffer);
       healthManipulation : decrementerSaturated8 port map(clock, set, clearLi, enLi, healthChange, healthBuffer);
       counterManipulation : contador port map (clock, enCo, clearCo, turnBuffer); 
